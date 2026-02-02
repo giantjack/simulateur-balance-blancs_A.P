@@ -73,23 +73,34 @@ function getWhiteBalanceFilter(wbKelvin: number, sceneKelvin: number): string {
   // détermine la dominante de couleur
   const diff = wbKelvin - sceneKelvin;
 
-  // Convertir la différence en teinte
+  // Convertir la différence en intensité (0 à 1)
   // Diff positif = image plus chaude (orange)
   // Diff négatif = image plus froide (bleue)
-  const maxDiff = 5000;
-  const normalizedDiff = Math.max(-maxDiff, Math.min(maxDiff, diff)) / maxDiff;
+  const maxDiff = 4000;
+  const normalizedDiff = Math.max(-1, Math.min(1, diff / maxDiff));
+  const intensity = Math.abs(normalizedDiff);
 
-  // Calculer les valeurs du filtre
-  const warmth = normalizedDiff * 30; // degrés de rotation de teinte
-  const saturation = 100 + Math.abs(normalizedDiff) * 20;
+  if (Math.abs(diff) < 200) {
+    // Presque neutre
+    return "none";
+  }
 
-  // sepia pour réchauffer, hue-rotate pour la teinte
   if (normalizedDiff > 0) {
-    // Plus chaud : ajouter du sépia et saturer
-    return `sepia(${normalizedDiff * 40}%) saturate(${saturation}%) hue-rotate(${warmth * -0.5}deg)`;
+    // Plus chaud : orange/jaune prononcé
+    // Combinaison sepia + hue-rotate vers orange + saturation
+    const sepia = intensity * 80; // jusqu'à 80% sepia
+    const hueShift = intensity * -15; // légère rotation vers orange
+    const saturation = 100 + intensity * 40;
+    const brightness = 100 + intensity * 5;
+    return `sepia(${sepia}%) hue-rotate(${hueShift}deg) saturate(${saturation}%) brightness(${brightness}%)`;
   } else {
-    // Plus froid : teinte bleue
-    return `saturate(${saturation}%) hue-rotate(${warmth * 2}deg)`;
+    // Plus froid : bleu prononcé
+    // hue-rotate vers bleu + saturation + légère désaturation des rouges
+    const hueShift = intensity * 45; // rotation vers bleu (positif = bleu)
+    const saturation = 100 + intensity * 30;
+    const brightness = 100 - intensity * 5;
+    // Ajouter un léger sepia inversé via hue-rotate supplémentaire
+    return `hue-rotate(${hueShift}deg) saturate(${saturation}%) brightness(${brightness}%)`;
   }
 }
 
